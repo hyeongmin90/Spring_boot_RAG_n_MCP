@@ -15,7 +15,7 @@ def run_pipeline(url="https://docs.spring.io/spring-boot/reference/"):
     print("=== Starting RAG Data Pipeline (LLM Semantic Chunking) ===")
     
     # Limit max pages for testing
-    max_pages = 5
+    max_pages = None
     print(f"Limiting to {max_pages} pages for testing...")
     
     # Directory for chunk logs

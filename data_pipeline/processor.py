@@ -34,12 +34,19 @@ class Section(BaseModel):
             "Write 3–5 sentences. The summary must fully represent the chunk's content "
             "for vector search — it is the ONLY text that will be embedded and indexed. "
             "You MUST include:\n"
-            "1. All key technical terms, class names, annotations, and configuration "
-            "2. The situation or problem this chunk addresses\n"
-            "3. The core behavior or conclusion\n"
+            "1. The situation or problem this chunk addresses\n"
+            "2. The core behavior or conclusion\n"
             "Never omit keywords. Every proper noun and technical identifier in the "
             "content must also appear in the summary."
         )
+    )
+    context: str = Field(
+        description=(
+            "Optional. A 1-sentence description of the previous chunk's content, "
+            "to be placed before this chunk as context. "
+            "Leave empty for the first chunk."
+        ),
+        default=""
     )
     content: str = Field(
         description="Preserve the original text exactly as-is. Do not modify it in any way."
@@ -67,18 +74,20 @@ def split_text_with_llm(text, model_name="gpt-5-mini"):
         "Split the documentation into chunks where each chunk can independently answer "
         "a specific user question without requiring context from other chunks.\n\n"
         "## Chunking Rules\n"
-        "1. Each chunk should represent ONE distinct concept, behavior, or use case.\n"
-        "2. Target chunk size: 100–300 words. Never exceed 500 words.\n"
+        "1. Each chunk should represent only ONE distinct concept, behavior, or use case.\n"
+        "2. Aim for 100 to 300 words per chunk. "
+        "If a chunk would be shorter than 50 words, merge it with the most closely related adjacent chunk. "
+        "Prioritize topic coherence over meeting the size target, do not merge unrelated topics just to reach 100 words.\n"
         "3. If a code example directly illustrates the preceding explanation, keep them in the SAME chunk.\n"
         "4. If a code example is standalone or paired with minimal prose, it may be its own chunk.\n"
-        "5. When content flows across a natural boundary, add a 1-sentence context note at the start of the new chunk (prefix with [Context]: ).\n\n"
+        "5. If this chunk continues directly from the previous one, populate the context field "
+        "with a 1-sentence summary of what the previous chunk covered. Do not describe what comes next.\n\n"
         "## Text to process\n"
-        "{text}"
+        f"{text}"
     )
     
     try:
-        chain = prompt | structured_llm
-        result = chain.invoke({"text": text})
+        result = structured_llm.invoke(prompt)
         documents = []
         for section in result.sections:
             # User Strategy: Embed Summary, Retrieve Original via Metadata
@@ -86,7 +95,8 @@ def split_text_with_llm(text, model_name="gpt-5-mini"):
                 page_content=section.summary,  # This is what gets embedded
                 metadata={
                     "original_content": section.content, # This is the full context
-                    "type": "llm_semantic_chunk"
+                    "context": section.context,
+                    "category": "spring_boot_reference"
                 }
             )
             documents.append(doc)
@@ -94,7 +104,19 @@ def split_text_with_llm(text, model_name="gpt-5-mini"):
     except Exception as e:
         print(f"Error during LLM splitting: {e}")
         # Fallback to simple splitting if LLM fails
-        return split_text(text)
+        split_content = split_text(text)
+        documents = []
+        for content in split_content:
+            doc = Document(
+                page_content=content.page_content,
+                metadata={
+                    "original_content": content.page_content,
+                    "context": "",
+                    "category": "spring_boot_reference"
+                }
+            )
+            documents.append(doc)
+        return documents
 
 def enhance_chunk_with_llm(chunk_text, llm=None):
     """
