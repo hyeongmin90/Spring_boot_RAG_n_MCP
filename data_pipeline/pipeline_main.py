@@ -1,35 +1,35 @@
 import sys
 import os
+import asyncio
 from dotenv import load_dotenv
 
 # Add project root to sys.path to ensure module imports work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from data_pipeline.crawler import fetch_spring_boot_docs
-from data_pipeline.processor import split_text_with_llm
+from data_pipeline.processor import split_text_with_llm_async
 from data_pipeline.storage import add_documents
 
-def run_pipeline(url="https://docs.spring.io/spring-boot/reference/"):
-    load_dotenv()
+async def process_page(sem, page, log_dir):
+    """
+    Async task to process a single page:
+    1. Split text with LLM (Async)
+    2. Save logs
+    3. Store in Vector DB
+    """
+    url_link = page['url']
+    content = page['content']
     
-    print("=== Starting RAG Data Pipeline (LLM Semantic Chunking) ===")
-    
-    # Limit max pages for testing
-    max_pages = None
-    print(f"Limiting to {max_pages} pages for testing...")
-    
-    # Directory for chunk logs
-    log_dir = "llm_chunk_logs"
-    os.makedirs(log_dir, exist_ok=True)
-    
-    for page in fetch_spring_boot_docs(url, max_pages=max_pages):
-        url_link = page['url']
-        content = page['content']
+    async with sem:
+        print(f"  > [Start] Processing: {url_link}")
         
-        # 2. Process
-        print(f"  - Splitting with LLM (gpt-5-mini)...")
-        chunks = split_text_with_llm(content)
-        
+        # 2. Process (LLM Async)
+        try:
+            chunks = await split_text_with_llm_async(content)
+        except Exception as e:
+            print(f"  ! [Error] Failed to split {url_link}: {e}")
+            return
+
         # Add metadata & Log to file
         log_filename = url_link.split('/')[-1]
         if not log_filename or log_filename.endswith('/'):
@@ -53,14 +53,45 @@ def run_pipeline(url="https://docs.spring.io/spring-boot/reference/"):
                 f.write(f"[Summary]\n{chunk.page_content}\n\n")
                 f.write(f"[Original Content]\n{chunk.metadata.get('original_content', '')}\n")
                 f.write("-" * 50 + "\n\n")
-                
-        print(f"  - Processed: {len(chunks)} chunks from {url_link}")
-        print(f"  - Log saved to: {log_path}")
+        
+        print(f"  - [Done] {len(chunks)} chunks from {url_link}")
 
-        # 3. Store
-        add_documents(chunks)
+        # 3. Store (Synchronous call, but fast enough or acceptable for now)
+        if chunks:
+            add_documents(chunks)
 
-    print("\n=== Pipeline Completed Successfully ===")
+async def run_pipeline_async(url="https://docs.spring.io/spring-boot/reference/"):
+    load_dotenv()
+    
+    print("=== Starting Async RAG Data Pipeline (Limit: 5) ===")
+    
+    # Directory for chunk logs
+    log_dir = "llm_chunk_logs"
+    os.makedirs(log_dir, exist_ok=True)
+    
+    # Limit pages for testing if needed
+    max_pages = None 
+    print(f"Limiting to {max_pages} pages..." if max_pages else "No page limit set.")
+
+    # Concurrency Control
+    sem = asyncio.Semaphore(5)
+    tasks = []
+
+    # 1. Crawl (Generator) - Sync
+    # We iterate the generator and spawn async tasks
+    print("Fetching pages from crawler...")
+    
+    for i, page in enumerate(fetch_spring_boot_docs(url, max_pages=max_pages)):
+        task = asyncio.create_task(process_page(sem, page, log_dir))
+        tasks.append(task)
+    
+    if tasks:
+        print(f"\nScheduled {len(tasks)} tasks. Waiting for completion...")
+        await asyncio.gather(*tasks)
+    else:
+        print("No pages found or crawled.")
+
+    print("\n=== Pipeline Completed ===")
 
 if __name__ == "__main__":
-    run_pipeline()
+    asyncio.run(run_pipeline_async())

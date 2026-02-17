@@ -118,7 +118,65 @@ def split_text_with_llm(text, model_name="gpt-5-mini"):
             documents.append(doc)
         return documents
 
-def enhance_chunk_with_llm(chunk_text, llm=None):
+async def split_text_with_llm_async(text, model_name="gpt-5-mini"):
+    """
+    Splits the full text into logical sections using an LLM asynchronously.
+    Returns a list of Document objects.
+    """
+    if not text:
+        return []
+        
+    llm = ChatOpenAI(model=model_name, temperature=0)
+    structured_llm = llm.with_structured_output(PageSections)
+    
+    prompt = (
+        "You are a technical documentation processor specializing in RAG pipeline preparation.\n\n"
+        "## Goal\n"
+        "Split the documentation into chunks where each chunk can independently answer "
+        "a specific user question without requiring context from other chunks.\n\n"
+        "## Chunking Rules\n"
+        "1. Each chunk should represent only ONE distinct concept, behavior, or use case.\n"
+        "2. Aim for 100 to 300 words per chunk. "
+        "If a chunk would be shorter than 50 words, merge it with the most closely related adjacent chunk. "
+        "Prioritize topic coherence over meeting the size target, do not merge unrelated topics just to reach 100 words.\n"
+        "3. If a code example directly illustrates the preceding explanation, keep them in the SAME chunk.\n"
+        "4. If a code example is standalone or paired with minimal prose, it may be its own chunk.\n"
+        "5. If this chunk continues directly from the previous one, populate the context field "
+        "with a 1-sentence summary of what the previous chunk covered. Do not describe what comes next.\n\n"
+        "## Text to process\n"
+        f"{text}"
+    )
+    
+    try:
+        result = await structured_llm.ainvoke(prompt)
+        documents = []
+        for section in result.sections:
+            doc = Document(
+                page_content=section.summary,  # This is what gets embedded
+                metadata={
+                    "original_content": section.content, # This is the full context
+                    "context": section.context,
+                    "category": "spring_boot_reference"
+                }
+            )
+            documents.append(doc)
+        return documents
+    except Exception as e:
+        print(f"Error during Async LLM splitting: {e}")
+        # Fallback to simple splitting if LLM fails
+        split_content = split_text(text)
+        documents = []
+        for content in split_content:
+            doc = Document(
+                page_content=content.page_content,
+                metadata={
+                    "original_content": content.page_content,
+                    "context": "",
+                    "category": "spring_boot_reference"
+                }
+            )
+            documents.append(doc)
+        return documents
     """
     Uses LLM to generate a concise summary or keywords for the chunk.
     This metadata can be stored with the chunk for better retrieval.
