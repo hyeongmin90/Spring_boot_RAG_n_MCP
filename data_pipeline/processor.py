@@ -29,8 +29,21 @@ def split_text(text, chunk_size=1000, chunk_overlap=200):
 
 class Section(BaseModel):
     """A logical section of the document."""
-    summary: str = Field(description="A brief summary or description of what this section covers.")
-    content: str = Field(description="The exact original text of the section. Do not modify it.")
+    summary: str = Field(
+        description=(
+            "Write 3–5 sentences. The summary must fully represent the chunk's content "
+            "for vector search — it is the ONLY text that will be embedded and indexed. "
+            "You MUST include:\n"
+            "1. All key technical terms, class names, annotations, and configuration "
+            "2. The situation or problem this chunk addresses\n"
+            "3. The core behavior or conclusion\n"
+            "Never omit keywords. Every proper noun and technical identifier in the "
+            "content must also appear in the summary."
+        )
+    )
+    content: str = Field(
+        description="Preserve the original text exactly as-is. Do not modify it in any way."
+    )
 
 class PageSections(BaseModel):
     """The structured output containing all sections of the page."""
@@ -49,13 +62,18 @@ def split_text_with_llm(text, model_name="gpt-5-mini"):
     structured_llm = llm.with_structured_output(PageSections)
     
     prompt = (
-        "You are a technical documentation processor.\n"
-        "Split the provided documentation page into logically distinct sections.\n"
-        "For each section, provide:\n"
-        "1. A brief summary/description.\n"
-        "2. The exact original text of that section (preserve formatting as much as possible).\n"
-        "\n"
-        "TEXT:\n{text}"
+        "You are a technical documentation processor specializing in RAG pipeline preparation.\n\n"
+        "## Goal\n"
+        "Split the documentation into chunks where each chunk can independently answer "
+        "a specific user question without requiring context from other chunks.\n\n"
+        "## Chunking Rules\n"
+        "1. Each chunk should represent ONE distinct concept, behavior, or use case.\n"
+        "2. Target chunk size: 100–300 words. Never exceed 500 words.\n"
+        "3. If a code example directly illustrates the preceding explanation, keep them in the SAME chunk.\n"
+        "4. If a code example is standalone or paired with minimal prose, it may be its own chunk.\n"
+        "5. When content flows across a natural boundary, add a 1-sentence context note at the start of the new chunk (prefix with [Context]: ).\n\n"
+        "## Text to process\n"
+        "{text}"
     )
     
     try:
