@@ -130,10 +130,6 @@ def fetch_docs(start_url="https://docs.spring.io/spring-boot/reference/", max_pa
     
     print(f"Found {len(links_to_visit)} unique URLs")
     
-    # 출력 디렉토리
-    output_dir = "spring_boot_crawled_md"
-    os.makedirs(output_dir, exist_ok=True)
-    
     links_list = list(links_to_visit)
     
     if max_pages:
@@ -145,6 +141,10 @@ def fetch_docs(start_url="https://docs.spring.io/spring-boot/reference/", max_pa
     
     success_count = 0
     saved_files = {}
+
+    # # 출력 디렉토리
+    # output_dir = "spring_boot_crawled_md"
+    # os.makedirs(output_dir, exist_ok=True)
     
     for i, url in enumerate(links_list, 1):
         # 경로 기반 파일명 생성
@@ -173,11 +173,11 @@ def fetch_docs(start_url="https://docs.spring.io/spring-boot/reference/", max_pa
             saved_files[filename] = url
             filename += ".md"
             
-            # 저장
-            filepath = os.path.join(output_dir, filename)
-            with open(filepath, "w", encoding="utf-8") as f:
-                f.write(f"Source: {url}\n\n")
-                f.write(markdown_text)
+            # # Debug: 크롤링 결과 확인용
+            # filepath = os.path.join(output_dir, filename)
+            # with open(filepath, "w", encoding="utf-8") as f:
+            #     f.write(f"Source: {url}\n\n")
+            #     f.write(markdown_text)
             
             print(f"  ✓ Saved: {filename}")
             success_count += 1
@@ -188,7 +188,7 @@ def fetch_docs(start_url="https://docs.spring.io/spring-boot/reference/", max_pa
     
     print("\n" + "="*80)
     print(f"Completed: {success_count}/{len(links_list)} pages saved")
-    print(f"Output directory: {output_dir}/")
+    # print(f"Output directory: {output_dir}/")
     
     # 통계
     import glob
