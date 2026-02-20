@@ -54,6 +54,25 @@ def add_documents(documents):
     vectorstore.add_documents(documents=documents, ids=ids)
     tqdm.write("Documents added successfully.")
 
+def mmr_query_documents(query, k=3, category=None):
+    """
+    Searches for documents similar to the query. with mmr
+    """
+    vectorstore = get_vectorstore()
+    search_filter = None
+    if category:
+        search_filter = {"category": category}
+    
+    results = vectorstore.max_marginal_relevance_search(
+        query=query, 
+        k=k, 
+        filter=search_filter,
+        lambda_mult=0.5,
+        fetch_k=20
+    )
+    
+    return results
+
 def query_documents(query, k=3, category=None):
     """
     Searches for documents similar to the query.
