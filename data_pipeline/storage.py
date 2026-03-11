@@ -121,14 +121,19 @@ def get_hybrid_retriever(k=3, category=None, collection_name="spring_docs", dens
     
     # Initialize BM25 Retriever by fetching all documents from Chroma
     # We do this lazily (only when hybrid search is requested)
-    if collection_name not in _bm25_retrievers:
+    bm25_key = f"{collection_name}_{category}" if category else collection_name
+    
+    if bm25_key not in _bm25_retrievers:
         with _vectorstore_lock:
-            if collection_name not in _bm25_retrievers:
-                tqdm.write(f"Initializing BM25 Retriever from Chroma documents ({collection_name})...")
-                db_data = vectorstore.get()
+            if bm25_key not in _bm25_retrievers:
+                tqdm.write(f"Initializing BM25 Retriever from Chroma documents (Key: {bm25_key})...")
+                
+                # Retrieve from ChromaDB using filter if category is provided
+                where_filter = {"category": category} if category else None
+                db_data = vectorstore.get(where=where_filter)
                 
                 if not db_data or not db_data.get('documents'):
-                    tqdm.write("No documents found in Chroma to build BM25 retriever.")
+                    tqdm.write(f"No documents found in Chroma for BM25 key {bm25_key}.")
                     return chroma_retriever # Fallback to just Chroma if empty
                 
                 # Reconstruct Document objects
@@ -154,17 +159,17 @@ def get_hybrid_retriever(k=3, category=None, collection_name="spring_docs", dens
                     return [w for w in words if w not in stopwords]
                 
                 # Create BM25 retriever with custom preprocessing
-                _bm25_retrievers[collection_name] = BM25Retriever.from_documents(
+                _bm25_retrievers[bm25_key] = BM25Retriever.from_documents(
                     docs,
                     preprocess_func=preprocess_text
                 )
     
     # Set fetch size for BM25
-    _bm25_retrievers[collection_name].k = fetch_k
+    _bm25_retrievers[bm25_key].k = fetch_k
     
     # Create the Ensemble Retriever
     ensemble_retriever = EnsembleRetriever(
-        retrievers=[chroma_retriever, _bm25_retrievers[collection_name]],
+        retrievers=[chroma_retriever, _bm25_retrievers[bm25_key]],
         weights=[dense_weight, sparse_weight]
     )
     
