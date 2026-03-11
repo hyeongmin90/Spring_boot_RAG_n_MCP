@@ -184,3 +184,10 @@ langchainDev/
 ## 참고 사항
 *   본 프로젝트는 로컬 Windows 환경 및 Python 3.12+ 버전 위에서 테스트되었습니다.
 *   **저장소 트래픽 초과 주의**: Cohere Reranker 사용 시 짧은 시간에 대량의 평가(`evaluate_retriever_comprehensive.py` 등)를 진행할 경우 Trial API Key의 Rate Limit(분당 요청 횟수)에 주의하세요. (Production Key 권장)
+
+---
+
+## 라이선스 (License)
+
+이 프로젝트는 **MIT 라이선스(MIT License)**를 따릅니다.
+자세한 내용은 [LICENSE](LICENSE) 파일을 확인하세요. 누구나 자유롭게 사용, 수정, 배포 및 상업적 목적으로 활용할 수 있습니다.
