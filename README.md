@@ -114,7 +114,13 @@ pip install -r requirements.txt
     > ![RAG 검색 성능 평가 차트](results/hybrid_eval/5_docs/test_result/comprehensive_eval_chart_20260311_191037.png)
 
     - hybrid retriever 평가 결과
-
+    - 5개 docs의 청크를 기반으로 질문 생성
+    - 평가 방법
+      - 임의의 청크 수집하여 LLM을 활용해 질문 생성
+      - 생성된 질문으로 원본 청크를 top-k개로 가져오는지 retriever 평가
+      - 일반화, 추상화, 의미적 재구성, 다중 정보 결합 등의 지시로 질문 난이도를 높여 Recall을 낮춤
+      - 평가 지표: Hit Rate, MRR
+    
 *   **LangSmith LLM-as-a-judge 평가 실행**
     ```bash
     python data_pipeline/evaluation/run_langsmith_eval.py
