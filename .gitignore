@@ -4,6 +4,9 @@ chunk_logs/
 chroma_db/
 spring_crawled_md/
 
+#intellij
+.idea/
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
