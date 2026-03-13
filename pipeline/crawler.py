@@ -123,6 +123,14 @@ def fetch_docs(start_url="https://docs.spring.io/spring-boot/reference/", max_pa
             
             saved_files[filename] = url
             success_count += 1
+
+            # # Debug
+            # ROOT_DIR = Path(__file__).parent.parent
+            # file_path = ROOT_DIR / "spring_crawled_md" / f"{filename}.md"
+            # with open(file_path, "w", encoding="utf-8") as f:
+            #     f.write(f"URL: {url}\n\n")
+            #     f.write(markdown_text)
+
             yield {'url': url, 'content': markdown_text}
         else:
             print(f"  ✗ Content too short or empty")

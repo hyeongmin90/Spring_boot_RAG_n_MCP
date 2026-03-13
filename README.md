@@ -184,13 +184,12 @@ langchainDev/
 │   ├── graph.py                     # LangGraph StateGraph 조립 및 컴파일
 │   └── __init__.py                  # build_graph() 노출
 │
-├── final_pipeline/                  # 단순 RAG Chain (레거시 / 참고용)
-│   ├── agent.py                     # Simple RAG Chain 챗봇
-│   └── main_ingest.py               # 문서 수집/벡터DB 구축 엔트리포인트
-│
-├── data_pipeline/                   # RAG 엔진 및 평가 실험실
-│   ├── storage.py                   # ChromaDB + Hybrid Search + Reranker
-│   ├── evaluation/                  # RAG 성능 평가 및 시각화 모듈 (HitRate, MRR 등)
+├── pipeline/                        # RAG 엔진 및 평가 실험실
+│   ├── crawler/                     # 웹 크롤러
+│   ├── storage.py                   # ChromaDB CRUD
+│   ├── retriever.py                 # Retriever 구현
+│   ├── ingest.py                    # 문서 수집/벡터DB 구축 엔트리포인트
+│   ├── evaluation/                  # RAG 성능 평가 및 시각화 모듈
 │   └── processor/                   # 청킹/처리 함수
 │
 ├── legacy/                          # 구버전 코드 에이전트 보관
@@ -203,7 +202,7 @@ langchainDev/
 │   └── server.py                    # FastMCP 기반 get_docs 툴 노출
 │
 ├── main.py                          # LangGraph RAG 에이전트 CLI 진입점
-├── ai.bat                           # Windows 배치 실행 파일
+├── ai.bat                           # RAG 에이전트 Windows 배치 실행 파일
 ├── requirements.txt                 # 전체 프로젝트 패키지 의존성 명세
 └── README.md                        # 프로젝트 가이드
 ```
