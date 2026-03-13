@@ -9,7 +9,7 @@ from langsmith import Client
 from langsmith.evaluation import evaluate
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from pipeline.storage import query_documents
+from pipeline.retriever import query_documents
 from openevals.prompts import CORRECTNESS_PROMPT, RAG_GROUNDEDNESS_PROMPT, RAG_RETRIEVAL_RELEVANCE_PROMPT
 from openevals.llm import create_llm_as_judge
 

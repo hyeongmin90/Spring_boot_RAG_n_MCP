@@ -12,8 +12,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from pipeline.storage import get_vectorstore, query_documents, mmr_query_documents
-from pipeline.retriever import query_hybrid
+from pipeline.storage import get_vectorstore
+from pipeline.retriever import query_hybrid, query_documents, mmr_query_documents
 
 # Load environment variables (OPENAI_API_KEY)
 load_dotenv()
