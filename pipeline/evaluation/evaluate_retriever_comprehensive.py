@@ -10,8 +10,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 load_dotenv()
 
 from langchain_openai import OpenAIEmbeddings
-from data_pipeline.storage import query_documents, mmr_query_documents, query_hybrid
-from data_pipeline.evaluation.evaluate_redundancy import calculate_semantic_redundancy, calculate_lexical_redundancy
+from pipeline.storage import query_documents, mmr_query_documents, query_hybrid
+from pipeline.evaluation.evaluate_redundancy import calculate_semantic_redundancy, calculate_lexical_redundancy
 
 def evaluate_retrieval(question, expected_id, method="dense", k=10):
     """
@@ -246,13 +246,12 @@ def run_comprehensive_evaluation(dataset_file="evaluation_dataset_split_7.json",
         offsets = np.linspace(-width*(num_methods-1)/2, width*(num_methods-1)/2, num_methods)
         
         # 각 method별로 막대 그리기
-        import matplotlib.cm as cm
-        colors = cm.get_cmap('tab10').colors
+        colors = plt.get_cmap('tab10').colors
         
         for i, method in enumerate(methods):
             data = [hit1_data[i], hit5_data[i], hit10_data[i], mrr5_data[i], mrr10_data[i]]
             ax.bar(x + offsets[i], data, width, label=method_labels[i], color=colors[i % len(colors)])
-            
+        
         ax.set_ylabel('Scores')
         ax.set_title('RAG 종합 평가 지표 비교')
         ax.set_xticks(x)
@@ -277,4 +276,4 @@ def run_comprehensive_evaluation(dataset_file="evaluation_dataset_split_7.json",
         print(f"\n[오류] 차트 생성 중 오류 발생: {e}")
 
 if __name__ == "__main__":
-    run_comprehensive_evaluation(dataset_file="evaluation_dataset_split_3.json", max_k=20)
+    run_comprehensive_evaluation(dataset_file="test_v1.json", max_k=20)

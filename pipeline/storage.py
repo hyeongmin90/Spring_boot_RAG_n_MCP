@@ -90,9 +90,6 @@ def query_documents(query, k=3, category=None, collection_name="spring_docs"):
     return results
 
 # Add support for Hybrid Search combining Chroma (Dense) and BM25 (Sparse)
-# import warnings
-# with warnings.catch_warnings():
-#     warnings.simplefilter("ignore")
 from langchain_community.retrievers import BM25Retriever
 from langchain_classic.retrievers import EnsembleRetriever
 from langchain_classic.retrievers import ContextualCompressionRetriever
@@ -120,7 +117,6 @@ def get_hybrid_retriever(k=3, category=None, collection_name="spring_docs", dens
     chroma_retriever = vectorstore.as_retriever(search_kwargs=search_kwargs)
     
     # Initialize BM25 Retriever by fetching all documents from Chroma
-    # We do this lazily (only when hybrid search is requested)
     bm25_key = f"{collection_name}_{category}" if category else collection_name
     
     if bm25_key not in _bm25_retrievers:
@@ -128,25 +124,21 @@ def get_hybrid_retriever(k=3, category=None, collection_name="spring_docs", dens
             if bm25_key not in _bm25_retrievers:
                 tqdm.write(f"Initializing BM25 Retriever from Chroma documents (Key: {bm25_key})...")
                 
-                # Retrieve from ChromaDB using filter if category is provided
                 where_filter = {"category": category} if category else None
                 db_data = vectorstore.get(where=where_filter)
                 
                 if not db_data or not db_data.get('documents'):
                     tqdm.write(f"No documents found in Chroma for BM25 key {bm25_key}.")
-                    return chroma_retriever # Fallback to just Chroma if empty
+                    return chroma_retriever
                 
-                # Reconstruct Document objects
                 docs = []
                 for idx in range(len(db_data['documents'])):
                     content = db_data['documents'][idx]
                     metadata = db_data['metadatas'][idx] if 'metadatas' in db_data else {}
                     docs.append(Document(page_content=content, metadata=metadata))
                 
-                # Define a preprocessing function for BM25
                 def preprocess_text(text: str) -> list[str]:
                     text = text.lower()
-                    # Keep words and numbers
                     words = re.findall(r'\b\w+\b', text)
                     stopwords = {
                         "the", "a", "an", "is", "in", "it", "to", "of", "and", "or",
@@ -158,23 +150,19 @@ def get_hybrid_retriever(k=3, category=None, collection_name="spring_docs", dens
                     }
                     return [w for w in words if w not in stopwords]
                 
-                # Create BM25 retriever with custom preprocessing
                 _bm25_retrievers[bm25_key] = BM25Retriever.from_documents(
                     docs,
                     preprocess_func=preprocess_text
                 )
     
-    # Set fetch size for BM25
     _bm25_retrievers[bm25_key].k = fetch_k
     
-    # Create the Ensemble Retriever
     ensemble_retriever = EnsembleRetriever(
         retrievers=[chroma_retriever, _bm25_retrievers[bm25_key]],
         weights=[dense_weight, sparse_weight]
     )
     
     if use_reranker:
-        # Initialize Cohere Reranker
         compressor = CohereRerank(model="rerank-english-v3.0", top_n=k)
         compression_retriever = ContextualCompressionRetriever(
             base_compressor=compressor,
@@ -194,42 +182,3 @@ def query_hybrid(query, k=3, category=None, collection_name="spring_docs", dense
     else:
          results = retriever.get_relevant_documents(query)
     return results[:k]
-
-if __name__ == "__main__":
-    from dotenv import load_dotenv
-    import sys
-    import os
-    
-    # Add project root to sys.path
-    sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-    
-    load_dotenv()
-    
-    print("=== Vector Store Test Console ===")
-    print("Type 'exit' or 'q' to quit.")
-    
-    while True:
-        query = input("\nEnter query: ").strip()
-        if query.lower() in ('exit', 'q'):
-            break
-            
-        if not query:
-            continue
-            
-        k_str = input("How many results (k) [default 3]: ").strip()
-        k = int(k_str) if k_str.isdigit() else 3
-        docs_type_str = input("Filter by docs_type (spring-boot or spring-data-redis) [default None]: ").strip()
-        docs_type = None
-        if docs_type_str:
-            docs_type = docs_type_str
-        try:
-            results = query_documents(query, k=k, docs_type=docs_type)
-            print(f"\nFound {len(results)} results:")
-            for i, doc in enumerate(results):
-                source = doc.metadata.get("source", "Unknown")
-                original_content = doc.metadata.get("original_content", "")
-                print(f"\n[{i+1}] Source: {source}")
-                print(f"     Content: {doc.page_content}")
-                print(f"     Original Content: {original_content}")
-        except Exception as e:
-            print(f"Error querying: {e}")

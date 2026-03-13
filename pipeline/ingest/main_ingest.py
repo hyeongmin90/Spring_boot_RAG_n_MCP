@@ -5,30 +5,28 @@ import hashlib
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm
 
-# Ensure the root project directory is in the path
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# 프로젝트 루트를 sys.path에 추가
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from data_pipeline.crawler import fetch_docs
-from data_pipeline.processor.processor import chunk_markdown_content
-from data_pipeline.storage import add_documents
+from pipeline.crawler import fetch_docs
+from pipeline.processor.processor import chunk_markdown_content
+from pipeline.storage import add_documents
 
 async def process_page(sem, page, category):
     """
     Async task to process a single page: Parsing -> Chunking -> Storage
     """
     url_link = page['url']
-    content = page['content'] # Markdown format
+    content = page['content']  # Markdown format
     
     async with sem:
         tqdm.write(f"  > [Start] Processing: {url_link}")
         try:
-            # Semantic Markdown Chunking
             chunks = chunk_markdown_content(content)
         except Exception as e:
             tqdm.write(f"  ! [Error] Failed to chunk {url_link}: {e}")
             return
 
-        # Add global metadata & ID
         for i, chunk in enumerate(chunks):
             chunk.metadata["source"] = url_link
             chunk.metadata["category"] = category
@@ -36,13 +34,12 @@ async def process_page(sem, page, category):
             
         tqdm.write(f"  - [Done] Created {len(chunks)} chunks from {url_link}")
 
-        # Ingest to ChromaDB
         if chunks:
             await asyncio.to_thread(add_documents, chunks, "spring_docs")
 
 async def run_ingestion_pipeline(url: str, category: str, max_pages: int = None):
     load_dotenv()
-    print(f"=== Starting Final RAG Ingestion Pipeline ({category}) ===")
+    print(f"=== Starting RAG Ingestion Pipeline ({category}) ===")
     
     sem = asyncio.Semaphore(5)
     tasks = []
@@ -89,4 +86,4 @@ if __name__ == "__main__":
         sys.exit(1)
     
     print(f"Ingesting {category} docs from {url}")
-    asyncio.run(run_ingestion_pipeline(url, category)) 
+    asyncio.run(run_ingestion_pipeline(url, category))

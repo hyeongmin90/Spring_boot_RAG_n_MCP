@@ -15,7 +15,7 @@ from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
 
 # Import storage to get VectorStore directly
-from data_pipeline.storage import get_vectorstore
+from pipeline.storage import get_vectorstore
 
 # 환경 변수 로드
 load_dotenv()

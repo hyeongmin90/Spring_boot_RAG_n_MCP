@@ -9,7 +9,7 @@ from langsmith import Client
 from langsmith.evaluation import evaluate
 from langchain_openai import ChatOpenAI
 from langchain_core.prompts import PromptTemplate
-from data_pipeline.storage import query_documents
+from pipeline.storage import query_documents
 from openevals.prompts import CORRECTNESS_PROMPT, RAG_GROUNDEDNESS_PROMPT, RAG_RETRIEVAL_RELEVANCE_PROMPT
 from openevals.llm import create_llm_as_judge
 
@@ -22,7 +22,7 @@ from langchain.agents import create_agent
 from langgraph.checkpoint.memory import InMemorySaver
 from langchain_core.messages import HumanMessage, ToolMessage, AIMessage
 
-from data_pipeline.rag_agent import search_spring_boot_docs
+# from data_pipeline.rag_agent import search_spring_boot_docs  # legacy - 구버전 에이전트
 
 # ==========================================
 # 0. 실제 RAG 에이전트 초기화
