@@ -1,6 +1,6 @@
 import sys
 import os
-from typing import Any, Optional
+from typing import Any, Optional, Literal
 
 from langchain_openai import ChatOpenAI
 from pydantic import BaseModel, Field
@@ -11,21 +11,15 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from pipeline.retriever import query_hybrid
 from agent.state import AgentState
 from agent.prompts import (
-    ANALYZE_PROMPT,
     REWRITE_PROMPT,
     GENERATE_PROMPT,
     GRADE_PROMPT,
     SUPPORTED_CATEGORIES,
 )
 
-
 # ──────────────────────────────────────────────
 # Structured Output 스키마 정의
 # ──────────────────────────────────────────────
-class AnalyzeOutput(BaseModel):
-    category: Optional[str] = Field(default=None, description="The most relevant Spring documentation category, or null")
-    reason: str = Field(description="Brief reason for the category selection")
-
 class GradeOutput(BaseModel):
     should_rewrite: bool = Field(description="Whether the retrieved docs are insufficient and the query needs to be rewritten")
 
@@ -80,36 +74,26 @@ def grade_docs_node(state: AgentState) -> dict[str, Any]:
 # Node 2: Rewrite
 #   - 정보가 부족할 때만 카테고리 추론 + 쿼리 최적화 수행
 # ──────────────────────────────────────────────
-def rewrite_node(state: AgentState) -> dict[str, Any]:
-    # 1. 먼저 카테고리 분석 수행
-    analyze_llm = _get_llm().with_structured_output(AnalyzeOutput)
-    analyze_chain = ANALYZE_PROMPT | analyze_llm
-    
+def rewrite_node(state: AgentState) -> dict[str, Any]:    
     categories_str = "\n".join(f"  - {c}" for c in SUPPORTED_CATEGORIES)
-    analyze_result: AnalyzeOutput = analyze_chain.invoke({
-        "question": state["question"],
-        "categories": categories_str,
-    })
     
-    category = analyze_result.category
-    if category not in SUPPORTED_CATEGORIES:
-        category = None
-
-    # 2. 분석된 카테고리를 바탕으로 쿼리 재작성
     rewrite_llm = _get_llm().with_structured_output(RewriteOutput)
     rewrite_chain = REWRITE_PROMPT | rewrite_llm
 
     rewrite_result: RewriteOutput = rewrite_chain.invoke({
         "question": state["question"],
-        "category": category or "null",
+        "categories": categories_str,
     })
+
+    category = rewrite_result.category
+    if category not in SUPPORTED_CATEGORIES:
+        category = None
 
     return {
         "rewritten_query": rewrite_result.rewritten_query,
-        "category": category, # 이제서야 카테고리 필터링 적용
+        "category": category,
         "is_rewritten": True,
     }
-
 
 # ──────────────────────────────────────────────
 # Node 3: Retrieve
@@ -128,7 +112,6 @@ def retrieve_node(state: AgentState) -> dict[str, Any]:
     )
 
     return {"documents": docs}
-
 
 # ──────────────────────────────────────────────
 # Node 4: Generate
